@@ -1,0 +1,16 @@
+{
+  "name": "garagem-n-camadas",
+  "version": "1.0.0",
+  "description": "Garagem de Veículos em arquitetura cliente-servidor e N camadas (MVC, Repository e injeção de dependência)",
+  "type": "module",
+  "private": true,
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "start": "node servidor/src/servidor.js",
+    "cli": "node clientes/terminal/cli.js",
+    "test": "node --test \"servidor/test/*.test.js\""
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}

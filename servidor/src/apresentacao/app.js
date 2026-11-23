@@ -1,0 +1,37 @@
+import express from 'express';
+import { fileURLToPath } from 'node:url';
+import { ErroNaoEncontrado, ErroRegraNegocio, ErroValidacao } from '../negocio/erros.js';
+import { erroView } from './veiculoView.js';
+
+const PASTA_CLIENTE_WEB = fileURLToPath(new URL('../../../clientes/web', import.meta.url));
+
+// Monta o servidor HTTP (camada de apresentação) a partir de um controller já pronto.
+export function criarApp(controller) {
+  const app = express();
+  app.use(express.json());
+
+  // Rotas da API REST (o contrato entre clientes e servidor).
+  app.get('/api/garagem/resumo', controller.resumo);
+  app.get('/api/veiculos', controller.listar);
+  app.get('/api/veiculos/:id', controller.buscar);
+  app.post('/api/veiculos', controller.registrarEntrada);
+  app.post('/api/veiculos/:id/saida', controller.registrarSaida);
+  app.delete('/api/veiculos/:id', controller.remover);
+
+  // Entrega os arquivos do cliente web (o navegador é quem executa esse cliente).
+  app.use(express.static(PASTA_CLIENTE_WEB));
+
+  app.use('/api', (req, res) => res.status(404).json(erroView('Rota não encontrada.')));
+
+  // Traduz erros do domínio em status HTTP.
+  app.use((erro, req, res, next) => {
+    if (erro instanceof ErroValidacao) return res.status(400).json(erroView(erro.message));
+    if (erro instanceof ErroNaoEncontrado) return res.status(404).json(erroView(erro.message));
+    if (erro instanceof ErroRegraNegocio) return res.status(409).json(erroView(erro.message));
+    if (erro.type === 'entity.parse.failed') return res.status(400).json(erroView('JSON inválido.'));
+    console.error(erro);
+    res.status(500).json(erroView('Erro interno no servidor.'));
+  });
+
+  return app;
+}

@@ -1,0 +1,6 @@
+node_modules/
+dados/
+*.db
+# arquivos locais do assistente (não vão para o repositório)
+.claude/
+CLAUDE.md

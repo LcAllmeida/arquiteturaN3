@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Garagem de Veículos</title>
+  <link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+  <header class="topo">
+    <div class="conteudo">
+      <h1>Garagem de Veículos</h1>
+      <p class="sub">Cliente web &middot; consome a API REST do servidor em N camadas</p>
+    </div>
+  </header>
+
+  <main class="conteudo">
+    <section aria-labelledby="t-resumo" class="cartao">
+      <h2 id="t-resumo">Ocupação</h2>
+      <div class="numeros">
+        <div><span class="rotulo">Vagas</span><strong id="vagas">-</strong></div>
+        <div><span class="rotulo">Ocupadas</span><strong id="ocupadas" class="ocupado">-</strong></div>
+        <div><span class="rotulo">Livres</span><strong id="livres" class="livre">-</strong></div>
+      </div>
+      <div class="barra" role="progressbar" aria-label="Vagas ocupadas" aria-valuemin="0" id="barra">
+        <div class="barra-cheia" id="barra-cheia"></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="t-entrada" class="cartao">
+      <h2 id="t-entrada">Registrar entrada</h2>
+      <form id="form-entrada" novalidate>
+        <div class="campo">
+          <label for="placa">Placa</label>
+          <input id="placa" name="placa" required maxlength="8" autocomplete="off" aria-describedby="ajuda-placa">
+          <small id="ajuda-placa">ABC1234 ou ABC1D23</small>
+        </div>
+        <div class="campo">
+          <label for="modelo">Modelo</label>
+          <input id="modelo" name="modelo" required maxlength="40">
+        </div>
+        <div class="campo">
+          <label for="cor">Cor</label>
+          <input id="cor" name="cor" required maxlength="20">
+        </div>
+        <button type="submit" class="botao primario">Registrar entrada</button>
+      </form>
+      <p id="mensagem" class="mensagem" role="status" aria-live="polite"></p>
+    </section>
+
+    <section aria-labelledby="t-lista" class="cartao">
+      <div class="cabecalho-lista">
+        <h2 id="t-lista">Veículos</h2>
+        <button type="button" class="botao" id="atualizar">Atualizar</button>
+      </div>
+      <div class="rolagem">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">#</th><th scope="col">Placa</th><th scope="col">Modelo</th><th scope="col">Cor</th>
+              <th scope="col">Status</th><th scope="col">Entrada</th><th scope="col">Saída</th>
+              <th scope="col">Valor</th><th scope="col"><span class="oculto">Ações</span></th>
+            </tr>
+          </thead>
+          <tbody id="lista"></tbody>
+        </table>
+      </div>
+      <p id="vazio" class="vazio" hidden>Nenhum veículo registrado.</p>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
