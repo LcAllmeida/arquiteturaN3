@@ -1,5 +1,5 @@
 node_modules/
-dados/
+/dados/
 *.db
 # arquivos locais do assistente (não vão para o repositório)
 .claude/
