@@ -1,7 +1,7 @@
 import express from 'express';
 import { fileURLToPath } from 'node:url';
 import { ErroNaoEncontrado, ErroRegraNegocio, ErroValidacao } from '../negocio/erros.js';
-import { erroView } from './veiculoView.js';
+import { erroView } from './views.js';
 
 const PASTA_CLIENTE_WEB = fileURLToPath(new URL('../../../clientes/web', import.meta.url));
 
@@ -15,20 +15,20 @@ function cabecalhosSeguranca(req, res, next) {
   next();
 }
 
-// Monta o servidor HTTP (camada de apresentação) a partir de um controller já pronto.
-export function criarApp(controller) {
+// Monta o servidor HTTP (camada de apresentação) a partir dos controllers já prontos.
+export function criarApp({ produtoController, pedidoController }) {
   const app = express();
   app.disable('x-powered-by');
   app.use(cabecalhosSeguranca);
   app.use(express.json({ limit: '10kb' }));
 
   // Rotas da API REST (o contrato entre clientes e servidor).
-  app.get('/api/garagem/resumo', controller.resumo);
-  app.get('/api/veiculos', controller.listar);
-  app.get('/api/veiculos/:id', controller.buscar);
-  app.post('/api/veiculos', controller.registrarEntrada);
-  app.post('/api/veiculos/:id/saida', controller.registrarSaida);
-  app.delete('/api/veiculos/:id', controller.remover);
+  app.get('/api/produtos', produtoController.listar);
+  app.get('/api/loja/resumo', pedidoController.resumo);
+  app.get('/api/pedidos', pedidoController.listar);
+  app.get('/api/pedidos/:id', pedidoController.buscar);
+  app.post('/api/pedidos', pedidoController.criar);
+  app.post('/api/pedidos/:id/cancelamento', pedidoController.cancelar);
 
   // Entrega os arquivos do cliente web (o navegador é quem executa esse cliente).
   app.use(express.static(PASTA_CLIENTE_WEB));

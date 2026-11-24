@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Garagem de Veículos</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%232563eb'/%3E%3Cpath d='M11 24V8h6.5a5 5 0 0 1 0 10H11' fill='none' stroke='white' stroke-width='3' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <title>Loja Virtual</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%232563eb'/%3E%3Cpath d='M8 10h3l2.5 10h9l2-7H12.2' fill='none' stroke='white' stroke-width='2.4' stroke-linejoin='round' stroke-linecap='round'/%3E%3Ccircle cx='14' cy='24' r='1.6' fill='white'/%3E%3Ccircle cx='21' cy='24' r='1.6' fill='white'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="estilo.css">
 </head>
 <body>
   <header class="topo">
     <div class="conteudo">
-      <h1>Garagem de Veículos</h1>
+      <h1>Loja Virtual</h1>
       <p class="topo-sub">Cliente web da API REST · arquitetura cliente-servidor em N camadas</p>
     </div>
   </header>
@@ -21,56 +21,61 @@
       <button type="button" class="botao" id="tentar-novamente">Tentar novamente</button>
     </div>
 
-    <section aria-labelledby="t-ocupacao" class="cartao">
-      <h2 id="t-ocupacao">Ocupação</h2>
+    <section aria-labelledby="t-resumo" class="cartao">
+      <h2 id="t-resumo">Resumo da loja</h2>
       <dl class="numeros" id="numeros" aria-busy="true">
-        <div class="numero"><dt>Vagas</dt><dd id="vagas">—</dd></div>
-        <div class="numero"><dt>Ocupadas</dt><dd id="ocupadas" class="cor-ocupado">—</dd></div>
-        <div class="numero"><dt>Livres</dt><dd id="livres" class="cor-livre">—</dd></div>
+        <div class="numero"><dt>Pedidos confirmados</dt><dd id="r-pedidos">—</dd></div>
+        <div class="numero"><dt>Itens vendidos</dt><dd id="r-itens">—</dd></div>
+        <div class="numero"><dt>Faturamento</dt><dd id="r-faturamento" class="cor-destaque">—</dd></div>
       </dl>
-      <div class="barra" role="progressbar" aria-labelledby="legenda-barra" aria-valuemin="0" id="barra">
-        <div class="barra-cheia" id="barra-cheia"></div>
-      </div>
-      <p class="legenda" id="legenda-barra">Carregando ocupação…</p>
     </section>
 
-    <section aria-labelledby="t-entrada" class="cartao">
-      <h2 id="t-entrada">Registrar entrada</h2>
-      <p class="legenda">Todos os campos são obrigatórios.</p>
-      <form id="form-entrada" class="formulario" novalidate>
-        <div class="campo">
-          <label for="placa">Placa</label>
-          <input id="placa" name="placa" required maxlength="8" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="dica-placa">
-          <p class="dica" id="dica-placa" data-padrao="Ex.: ABC1234 ou ABC1D23">Ex.: ABC1234 ou ABC1D23</p>
-        </div>
-        <div class="campo">
-          <label for="modelo">Modelo</label>
-          <input id="modelo" name="modelo" required maxlength="40" autocomplete="off" aria-describedby="dica-modelo">
-          <p class="dica" id="dica-modelo" data-padrao="Ex.: Gol, Onix, Civic">Ex.: Gol, Onix, Civic</p>
-        </div>
-        <div class="campo">
-          <label for="cor">Cor</label>
-          <input id="cor" name="cor" required maxlength="20" autocomplete="off" aria-describedby="dica-cor">
-          <p class="dica" id="dica-cor" data-padrao="Ex.: Prata, Preto, Branco">Ex.: Prata, Preto, Branco</p>
-        </div>
-        <div class="campo-acao">
-          <button type="submit" class="botao primario">Registrar entrada</button>
-        </div>
-      </form>
-    </section>
+    <div class="loja">
+      <section aria-labelledby="t-catalogo" class="cartao">
+        <h2 id="t-catalogo">Catálogo</h2>
+        <p class="legenda">Preços e estoque vêm do servidor.</p>
+        <ul class="produtos" id="produtos" aria-busy="true">
+          <li class="estado">Carregando produtos…</li>
+        </ul>
+      </section>
 
-    <section aria-labelledby="t-veiculos" class="cartao">
+      <section aria-labelledby="t-carrinho" class="cartao carrinho">
+        <h2 id="t-carrinho">Carrinho</h2>
+        <ul class="itens-carrinho" id="itens-carrinho">
+          <li class="estado">Seu carrinho está vazio. Adicione produtos do catálogo.</li>
+        </ul>
+        <p class="dica" id="dica-itens" data-padrao=""></p>
+
+        <dl class="totais">
+          <div><dt>Subtotal</dt><dd id="c-subtotal">R$ 0,00</dd></div>
+          <div><dt>Desconto</dt><dd id="c-desconto">R$ 0,00</dd></div>
+          <div class="total"><dt>Total</dt><dd id="c-total">R$ 0,00</dd></div>
+        </dl>
+        <p class="legenda" id="regra-desconto">&nbsp;</p>
+
+        <form id="form-pedido" class="form-pedido" novalidate>
+          <div class="campo">
+            <label for="cliente">Nome do cliente</label>
+            <input id="cliente" name="cliente" required maxlength="60" autocomplete="name" aria-describedby="dica-cliente">
+            <p class="dica" id="dica-cliente" data-padrao="Obrigatório para finalizar.">Obrigatório para finalizar.</p>
+          </div>
+          <button type="submit" class="botao primario largo" id="finalizar">Finalizar pedido</button>
+        </form>
+      </section>
+    </div>
+
+    <section aria-labelledby="t-pedidos" class="cartao">
       <div class="cabecalho-lista">
-        <h2 id="t-veiculos">Veículos</h2>
+        <h2 id="t-pedidos">Pedidos</h2>
         <div class="ferramentas">
-          <span class="legenda" id="atualizado" aria-live="off"></span>
+          <span class="legenda" id="atualizado"></span>
           <button type="button" class="botao" id="atualizar">Atualizar</button>
         </div>
       </div>
 
-      <div class="abas" role="group" aria-label="Filtrar veículos">
-        <button type="button" class="aba" data-filtro="estacionado" aria-pressed="true">No pátio <span class="contador" id="n-estacionado">0</span></button>
-        <button type="button" class="aba" data-filtro="saiu" aria-pressed="false">Histórico <span class="contador" id="n-saiu">0</span></button>
+      <div class="abas" role="group" aria-label="Filtrar pedidos">
+        <button type="button" class="aba" data-filtro="confirmado" aria-pressed="true">Confirmados <span class="contador" id="n-confirmado">0</span></button>
+        <button type="button" class="aba" data-filtro="cancelado" aria-pressed="false">Cancelados <span class="contador" id="n-cancelado">0</span></button>
         <button type="button" class="aba" data-filtro="todos" aria-pressed="false">Todos <span class="contador" id="n-todos">0</span></button>
       </div>
 
@@ -78,21 +83,26 @@
         <thead>
           <tr>
             <th scope="col" class="col-id">Nº</th>
-            <th scope="col">Veículo</th>
+            <th scope="col">Cliente</th>
+            <th scope="col">Itens</th>
+            <th scope="col">Data</th>
+            <th scope="col" class="col-valor">Desconto</th>
+            <th scope="col" class="col-valor">Total</th>
             <th scope="col">Status</th>
-            <th scope="col">Entrada</th>
-            <th scope="col">Saída</th>
-            <th scope="col">Permanência</th>
-            <th scope="col" class="col-valor">Valor</th>
             <th scope="col" class="col-acoes"><span class="oculto">Ações</span></th>
           </tr>
         </thead>
-        <tbody id="lista">
-          <tr class="linha-estado"><td colspan="8">Carregando veículos…</td></tr>
+        <tbody id="lista-pedidos">
+          <tr class="linha-estado"><td colspan="8">Carregando pedidos…</td></tr>
         </tbody>
       </table>
     </section>
   </main>
+
+  <a href="#t-carrinho" class="barra-carrinho" id="barra-carrinho" hidden>
+    <span>Ver carrinho · <span id="b-qtd">0 itens</span></span>
+    <strong id="b-total">R$ 0,00</strong>
+  </a>
 
   <div id="aviso" class="toast" role="status" aria-live="polite" hidden></div>
 

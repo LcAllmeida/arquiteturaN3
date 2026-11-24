@@ -1,13 +1,14 @@
 {
-  "name": "garagem-n-camadas",
+  "name": "loja-n-camadas",
   "version": "1.0.0",
-  "description": "Garagem de Veículos em arquitetura cliente-servidor e N camadas (MVC, Repository e injeção de dependência)",
+  "description": "Loja virtual de pedidos em arquitetura cliente-servidor e N camadas (MVC, Repository e injeção de dependência)",
   "type": "module",
   "private": true,
   "engines": { "node": ">=22.13" },
   "scripts": {
     "start": "node servidor/src/servidor.js",
     "cli": "node clientes/terminal/cli.js",
+    "reset": "node -e \"require('fs').rmSync('dados',{recursive:true,force:true});console.log('Banco apagado: estoque e pedidos voltam ao início.')\"",
     "test": "node --test \"servidor/test/*.test.js\""
   },
   "dependencies": {

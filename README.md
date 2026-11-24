@@ -1,4 +1,4 @@
-# Garagem de Veículos: cliente-servidor e arquitetura em N camadas
+# Loja Virtual de Pedidos: cliente-servidor e arquitetura em N camadas
 
 Trabalho prático da disciplina de **Arquitetura de Software**, Universidade de Rio Verde (2026).
 
@@ -13,31 +13,44 @@ Trabalho prático da disciplina de **Arquitetura de Software**, Universidade de 
 
 ## Descrição
 
-O sistema controla a entrada e a saída de veículos de uma garagem com número limitado de vagas, e calcula o valor a pagar na saída.
+O sistema implementa a **loja virtual de pedidos em três camadas** descrita como exemplo na seção 6.2 do nosso trabalho teórico. Clientes montam um carrinho com produtos do catálogo e finalizam a compra; o servidor confere o estoque, calcula o total, aplica o desconto e grava o pedido.
 
-Ele mostra na prática os dois estilos estudados no trabalho teórico:
+Ele mostra na prática os dois estilos estudados:
 
-- **Cliente-servidor:** um servidor expõe uma API REST e **dois clientes diferentes** usam o mesmo contrato HTTP. São eles uma página web, que roda no navegador, e um cliente de terminal. Os dois não conhecem nada da implementação interna do servidor.
-- **N camadas:** o servidor é dividido em apresentação, negócio e acesso a dados. A dependência desce em um só sentido, e o banco SQLite fica num terceiro nível.
+- **Cliente-servidor:** um servidor expõe uma API REST e **dois clientes diferentes** usam o mesmo contrato HTTP. São eles uma página web, que roda no navegador, e um cliente de terminal, no papel do "aplicativo" do texto. Os dois reutilizam as mesmas regras de negócio, que ficam só no servidor.
+- **N camadas:** o servidor é dividido em apresentação, negócio e acesso a dados, e o banco SQLite fica num terceiro nível (Figura 2 do trabalho).
+
+### O fluxo da seção 6.2 no código
+
+| Passo do trabalho (seção 6.2) | Onde acontece |
+|---|---|
+| a) o cliente envia um `POST` com os itens do carrinho | `clientes/web/app.js` ou `clientes/terminal/cli.js` → `POST /api/pedidos` |
+| b) `PedidoController` valida o formato, converte em objeto de transferência e aciona o serviço | `servidor/src/apresentacao/PedidoController.js` e `pedidoDTO.js` |
+| c) `PedidoService` verifica o estoque, calcula o total, aplica o desconto e coordena a operação | `servidor/src/negocio/PedidoService.js`, `Pedido.js`, `Produto.js` |
+| d) `PedidoRepository` e `ProdutoRepository` gravam o pedido e atualizam o estoque **numa única transação** | `servidor/src/dados/` (`TransacaoSqlite` faz `BEGIN`/`COMMIT`/`ROLLBACK`) |
+| e) o servidor devolve uma resposta HTTP com o número do pedido | `201 Created` com o pedido e o cabeçalho `Location: /api/pedidos/<número>` |
 
 ### Como os padrões aparecem no código
 
 | Conceito | Onde está | O que faz |
 |---|---|---|
-| **MVC** | `servidor/src/apresentacao/` e `negocio/Veiculo.js` | **Model** = entidade `Veiculo` e suas regras. **View** = `veiculoView.js`, que define o JSON devolvido (no cliente web, a tela que o mostra). **Controller** = `VeiculoController.js`, que recebe o HTTP, chama o serviço e escolhe a visão. |
-| **Repository** | `negocio/VeiculoRepository.js` (contrato) e `dados/` (implementações) | O serviço grava e busca veículos sem saber que existe SQL. Há duas implementações do mesmo contrato: SQLite e memória. |
-| **Injeção de dependência** | `servidor/src/container.js` | Único lugar que cria as classes concretas e as conecta (`repositório → serviço → controller`), por construtor. Trocar o banco é mudar só essa escolha (`DB=memoria`). |
-| **Inversão de dependência (SOLID)** | `VeiculoRepository` fica na camada de **negócio** | A camada de dados depende da abstração definida pelo negócio, não o contrário (Figura 4 do trabalho). |
+| **MVC** | `servidor/src/apresentacao/` e `negocio/` | **Model** = entidades `Pedido` e `Produto` com suas regras. **View** = `views.js`, que define o JSON devolvido (no cliente web, a tela que o mostra). **Controller** = `PedidoController` e `ProdutoController`, que recebem o HTTP, chamam o serviço e escolhem a visão. |
+| **Repository** | `negocio/contratos.js` (contratos) e `dados/` (implementações) | O serviço grava e busca pedidos e produtos sem saber que existe SQL. Cada contrato tem duas implementações: SQLite e memória. |
+| **Injeção de dependência** | `servidor/src/container.js` | Único lugar que cria as classes concretas e as conecta por construtor (`repositórios + transação → serviços → controllers`). Trocar o banco é mudar só essa escolha (`DB=memoria`). |
+| **Inversão de dependência (SOLID)** | os contratos ficam na camada de **negócio** | A camada de dados depende das abstrações definidas pelo negócio, não o contrário (Figura 4 do trabalho: `PedidoService → «interface» PedidoRepository ← PedidoRepositorySqlite`). |
+| **DTO** | `apresentacao/pedidoDTO.js` | Valida e converte o JSON recebido num objeto simples. O preço enviado pelo cliente é ignorado: vale sempre o do catálogo do servidor. |
+| **Architecture sinkhole** | `negocio/ProdutoService.js` | A consulta ao catálogo atravessa o serviço sem regra nenhuma, como discutido no fim da seção 6.2. Mantivemos a camada fechada para preservar o isolamento; o comentário no arquivo explica a escolha. |
 
 ### Regras de negócio
 
-- Placa no formato antigo (`ABC1234`) ou Mercosul (`ABC1D23`). Traços e minúsculas são aceitos e ajustados.
-- Modelo (até 40 caracteres) e cor (até 20) são obrigatórios.
-- A mesma placa não pode entrar duas vezes sem ter saído.
-- A garagem tem limite de vagas (padrão 10).
-- Cobrança: **R$ 10,00** pela primeira hora (ou fração) e **R$ 5,00** por hora adicional iniciada.
+- O nome do cliente é obrigatório (de 2 a 60 caracteres).
+- O pedido tem de 1 a 20 produtos diferentes, com quantidade inteira de 1 a 99 cada. O mesmo produto repetido vira uma linha só.
+- Só é possível comprar o que há em estoque. Se faltar um item, **nada** é gravado: a transação desfaz a baixa dos outros itens.
+- **Desconto de 10%** em pedidos a partir de **R$ 300,00**.
+- Cancelar um pedido devolve os itens ao estoque. Um pedido cancelado não pode ser cancelado de novo.
+- Os valores são guardados em centavos (inteiros), para não haver erro de arredondamento.
 
-Erros do domínio viram status HTTP: dado inválido **400**, registro inexistente **404**, regra violada **409**. O corpo da resposta traz a mensagem e, quando houver, o campo que causou o erro, por exemplo `{ "erro": "Informe o modelo do veículo.", "campo": "modelo" }`. O cliente web usa o `campo` para mostrar a mensagem embaixo do campo certo.
+Erros viram status HTTP: formato inválido **400**, pedido inexistente **404**, regra violada (ex.: estoque insuficiente) **409**. O corpo traz a mensagem e, quando houver, o campo que causou o erro, por exemplo `{ "erro": "Informe o nome do cliente (pelo menos 2 letras).", "campo": "cliente" }`. O cliente web usa o `campo` para mostrar a mensagem no lugar certo.
 
 ## Ferramentas de IA utilizadas
 
@@ -67,7 +80,13 @@ npm install
 npm start
 ```
 
-O terminal mostra `Servidor da garagem em http://localhost:3000`. **Deixe esse terminal aberto**: se ele for fechado, o servidor para e a página deixa de abrir. O banco é criado sozinho em `dados/garagem.db`. Para parar o servidor, use `Ctrl + C`.
+O terminal mostra `Servidor da loja em http://localhost:3000`. **Deixe esse terminal aberto**: se ele for fechado, o servidor para e a página deixa de abrir. O banco é criado sozinho em `dados/loja.db`, já com 6 produtos no catálogo. Para parar o servidor, use `Ctrl + C`.
+
+Para voltar o estoque e apagar os pedidos (com o servidor parado):
+
+```bash
+npm run reset
+```
 
 ### Se a página não abrir
 
@@ -82,29 +101,28 @@ O terminal mostra `Servidor da garagem em http://localhost:3000`. **Deixe esse t
 
 Abra <http://localhost:3000>. Pela página dá para:
 
-- ver a ocupação da garagem (vagas, ocupadas, livres);
-- registrar entradas, com validação e mensagem de erro embaixo de cada campo;
-- ver os veículos filtrados por **No pátio**, **Histórico** ou **Todos**, com o tempo de permanência e o valor parcial (quanto custaria se saísse agora);
-- registrar saídas (mostra o valor a pagar) e remover registros (pede um segundo clique para confirmar).
+- ver o resumo da loja (pedidos confirmados, itens vendidos, faturamento);
+- ver o catálogo com preço e estoque, e adicionar produtos ao carrinho (o carrinho não deixa passar do estoque);
+- ajustar quantidades no carrinho e ver subtotal, desconto e total antes de finalizar;
+- finalizar o pedido informando o nome do cliente;
+- ver os pedidos filtrados por **Confirmados**, **Cancelados** ou **Todos**, e cancelar um pedido (pede um segundo clique para confirmar).
 
-A lista se atualiza sozinha a cada 15 segundos. A página funciona no computador e no celular.
+A página se atualiza sozinha a cada 15 segundos e funciona no computador e no celular.
 
 ### Cliente 2: terminal
 
 Com o servidor rodando, abra **outro terminal** na pasta do projeto:
 
 ```bash
-npm run cli -- entrar ABC1D23 Gol Prata
-npm run cli -- entrar XYZ9876 Uno Branco
-npm run cli -- listar
-npm run cli -- sair 1
+npm run cli -- produtos                        # catálogo com id, preço e estoque
+npm run cli -- comprar "Ana Souza" 1:1 2:2     # cliente e itens no formato <id>:<quantidade>
+npm run cli -- pedidos
+npm run cli -- cancelar 1
 npm run cli -- resumo
-npm run cli -- remover 1
-npm run cli -- entrar QWE4R56 "Fiat Uno" Branco   # modelo com espaço vai entre aspas
-npm run cli            # mostra a ajuda
+npm run cli                                    # mostra a ajuda
 ```
 
-O que for feito no terminal aparece na página web (em até 15 segundos, ou na hora com o botão **Atualizar**) e vice-versa, porque os dois clientes usam o mesmo servidor.
+O que for feito no terminal aparece na página web (em até 15 segundos, ou na hora com o botão **Atualizar**) e vice-versa, porque os dois clientes usam o mesmo servidor. Dá para ver o servidor como árbitro: ponha 5 monitores no carrinho da página, compre 3 pelo terminal e tente finalizar na página. O servidor recusa e a página mostra quanto restou em estoque.
 
 ### Testes automatizados
 
@@ -112,31 +130,31 @@ O que for feito no terminal aparece na página web (em até 15 segundos, ou na h
 npm test
 ```
 
-São 13 testes. Os de `VeiculoService.test.js` testam as regras de negócio usando o **repositório em memória** injetado no serviço, sem banco de dados. Os de `api.test.js` sobem o servidor com SQLite e fazem requisições HTTP reais, de ponta a ponta, incluindo os casos de erro (id inválido, JSON inválido, placa repetida, campos longos demais).
+São 13 testes:
+
+- `PedidoService.test.js`: regras de negócio usando os **repositórios em memória** injetados no serviço, sem banco de dados (estoque, desconto, cancelamento, resumo). Inclui um teste em que gravar o pedido falha de propósito no **SQLite real**, para provar que a transação desfaz a baixa de estoque.
+- `api.test.js`: sobe o servidor com SQLite e faz requisições HTTP reais, de ponta a ponta, incluindo os casos de erro.
 
 ### Configurações opcionais
-
-Variáveis de ambiente, todas opcionais:
 
 | Variável | Padrão | Efeito |
 |---|---|---|
 | `PORT` | `3000` | Porta do servidor |
-| `DB` | `dados/garagem.db` | Arquivo do SQLite. Use `memoria` para trocar o repositório pela versão em memória, sem mudar código. |
-| `VAGAS` | `10` | Número de vagas da garagem |
+| `DB` | `dados/loja.db` | Arquivo do SQLite. Use `memoria` para trocar os repositórios pela versão em memória, sem mudar código. |
 | `API_URL` | `http://localhost:3000/api` | Endereço da API usado pelo cliente de terminal |
 
-Exemplo no Linux/macOS: `DB=memoria VAGAS=3 npm start`. No PowerShell: `$env:DB="memoria"; npm start`.
+Exemplo no Linux/macOS: `DB=memoria npm start`. No PowerShell: `$env:DB="memoria"; npm start`.
 
 ## API REST (contrato entre clientes e servidor)
 
 | Método | Rota | Descrição | Sucesso |
 |---|---|---|---|
-| GET | `/api/garagem/resumo` | Vagas totais, ocupadas e livres | 200 |
-| GET | `/api/veiculos` | Lista todos os veículos (mais recentes primeiro), com `permanenciaMinutos` e, para quem está no pátio, `valorParcial` | 200 |
-| GET | `/api/veiculos/:id` | Busca um veículo | 200 |
-| POST | `/api/veiculos` | Registra entrada. Corpo: `{ "placa", "modelo", "cor" }` | 201 |
-| POST | `/api/veiculos/:id/saida` | Registra saída e calcula o valor | 200 |
-| DELETE | `/api/veiculos/:id` | Remove o registro | 204 |
+| GET | `/api/produtos` | Catálogo com preço e estoque | 200 |
+| POST | `/api/pedidos` | Finaliza a compra. Corpo: `{ "cliente": "Ana", "itens": [{ "produtoId": 1, "quantidade": 2 }] }` | 201 |
+| GET | `/api/pedidos` | Lista os pedidos (mais recentes primeiro) | 200 |
+| GET | `/api/pedidos/:id` | Busca um pedido | 200 |
+| POST | `/api/pedidos/:id/cancelamento` | Cancela o pedido e devolve o estoque | 200 |
+| GET | `/api/loja/resumo` | Pedidos confirmados, itens vendidos, faturamento e regra de desconto | 200 |
 
 ## Estrutura do repositório
 
@@ -144,9 +162,9 @@ Exemplo no Linux/macOS: `DB=memoria VAGAS=3 npm start`. No PowerShell: `$env:DB=
 arquiteturaN3/
 ├── servidor/
 │   ├── src/
-│   │   ├── apresentacao/   # camada de apresentação (MVC: controller, view, rotas)
-│   │   ├── negocio/        # camada de negócio (entidade, serviço, contrato do repositório)
-│   │   ├── dados/          # camada de acesso a dados (repositórios SQLite e memória)
+│   │   ├── apresentacao/   # camada de apresentação (MVC: controllers, views, DTO, rotas)
+│   │   ├── negocio/        # camada de negócio (entidades, serviços, contratos dos repositórios)
+│   │   ├── dados/          # camada de acesso a dados (SQLite, memória, transação, catálogo inicial)
 │   │   ├── container.js    # injeção de dependência (monta as camadas)
 │   │   └── servidor.js     # ponto de entrada
 │   └── test/               # testes automatizados
@@ -158,7 +176,7 @@ arquiteturaN3/
 
 ## Diagramas
 
-Todos estão em [`docs/diagramas`](docs/diagramas/README.md): cliente-servidor, camadas e níveis, sequência de uma requisição, classes do Repository com injeção de dependência e estrutura de pastas.
+Todos estão em [`docs/diagramas`](docs/diagramas/README.md): cliente-servidor, camadas e níveis, sequência da finalização de compra (Figura 3 do trabalho), classes com Repository e injeção de dependência (Figura 4) e estrutura de pastas.
 
 Resumo das camadas e níveis:
 
@@ -170,9 +188,9 @@ flowchart LR
     end
     subgraph N2["Nível 2: servidor de aplicação"]
         direction TB
-        A["Apresentação<br/>VeiculoController + veiculoView"]
-        B["Negócio<br/>VeiculoService + Veiculo"]
-        D["Acesso a dados<br/>VeiculoRepositorySqlite"]
+        A["Apresentação<br/>PedidoController + DTO + views"]
+        B["Negócio<br/>PedidoService + Pedido + Produto"]
+        D["Acesso a dados<br/>PedidoRepository + ProdutoRepository"]
         A --> B --> D
     end
     subgraph N3["Nível 3: dados"]
