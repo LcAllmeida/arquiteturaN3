@@ -53,3 +53,18 @@ test('não registra saída duas vezes e acusa id inexistente', () => {
   assert.throws(() => s.registrarSaida(v.id), ErroRegraNegocio);
   assert.throws(() => s.buscar(99), ErroNaoEncontrado);
 });
+
+test('recusa modelo e cor longos demais e indica o campo do erro', () => {
+  const s = novoServico();
+  assert.throws(() => s.registrarEntrada({ ...gol, modelo: 'A'.repeat(41) }), (e) => e instanceof ErroValidacao && e.campo === 'modelo');
+  assert.throws(() => s.registrarEntrada({ ...gol, cor: 'B'.repeat(21) }), (e) => e instanceof ErroValidacao && e.campo === 'cor');
+  assert.throws(() => s.registrarEntrada({ ...gol, placa: { a: 1 } }), (e) => e.campo === 'placa');
+});
+
+test('calcula permanência e valor parcial de quem ainda está no pátio', () => {
+  const v = novoServico().registrarEntrada(gol);
+  const depois = new Date(new Date(v.entrada).getTime() + 65 * 60 * 1000);
+  assert.equal(v.permanenciaMinutos(depois), 65);
+  assert.equal(v.calcularValor(depois), 15); // 2 horas iniciadas
+  assert.equal(v.estaEstacionado(), true); // calcular não registra a saída
+});

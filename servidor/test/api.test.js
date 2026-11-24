@@ -62,6 +62,30 @@ test('erros viram status HTTP com mensagem', async () => {
   await enviar('POST', '/veiculos', { placa: 'AAA1111', modelo: 'Gol', cor: 'Azul' });
   const repetido = await enviar('POST', '/veiculos', { placa: 'AAA1111', modelo: 'Gol', cor: 'Azul' });
   assert.equal(repetido.status, 409);
+  assert.equal((await repetido.json()).campo, 'placa');
 
   assert.equal((await fetch(`${base}/nao-existe`)).status, 404);
+});
+
+test('id inválido na URL responde 400, não "NaN não encontrado"', async () => {
+  for (const id of ['abc', '1.5', '-1', '0']) {
+    const r = await fetch(`${base}/veiculos/${id}`);
+    assert.equal(r.status, 400, `id ${id}`);
+    assert.match((await r.json()).erro, /Identificador inválido/);
+  }
+});
+
+test('corpo que não é objeto e erro com campo', async () => {
+  assert.equal((await enviar('POST', '/veiculos', [1, 2])).status, 400);
+  const r = await enviar('POST', '/veiculos', { placa: 'CCC3333', modelo: '', cor: 'Azul' });
+  assert.deepEqual(await r.json(), { erro: 'Informe o modelo do veículo.', campo: 'modelo' });
+});
+
+test('veículo no pátio traz valor parcial e cabeçalhos de segurança', async () => {
+  const r = await enviar('POST', '/veiculos', { placa: 'DDD4E44', modelo: 'Kwid', cor: 'Branco' });
+  const v = await r.json();
+  assert.equal(v.valorParcial, 10);
+  assert.equal(v.permanenciaMinutos, 0);
+  assert.equal(r.headers.get('x-powered-by'), null);
+  assert.equal(r.headers.get('x-content-type-options'), 'nosniff');
 });

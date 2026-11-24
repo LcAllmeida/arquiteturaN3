@@ -32,12 +32,12 @@ Ele mostra na prática os dois estilos estudados no trabalho teórico:
 ### Regras de negócio
 
 - Placa no formato antigo (`ABC1234`) ou Mercosul (`ABC1D23`). Traços e minúsculas são aceitos e ajustados.
-- Modelo e cor são obrigatórios.
+- Modelo (até 40 caracteres) e cor (até 20) são obrigatórios.
 - A mesma placa não pode entrar duas vezes sem ter saído.
 - A garagem tem limite de vagas (padrão 10).
 - Cobrança: **R$ 10,00** pela primeira hora (ou fração) e **R$ 5,00** por hora adicional iniciada.
 
-Erros do domínio viram status HTTP: dado inválido **400**, registro inexistente **404**, regra violada **409**.
+Erros do domínio viram status HTTP: dado inválido **400**, registro inexistente **404**, regra violada **409**. O corpo da resposta traz a mensagem e, quando houver, o campo que causou o erro, por exemplo `{ "erro": "Informe o modelo do veículo.", "campo": "modelo" }`. O cliente web usa o `campo` para mostrar a mensagem embaixo do campo certo.
 
 ## Ferramentas de IA utilizadas
 
@@ -67,11 +67,27 @@ npm install
 npm start
 ```
 
-O servidor sobe em <http://localhost:3000>. O banco é criado sozinho em `dados/garagem.db`.
+O terminal mostra `Servidor da garagem em http://localhost:3000`. **Deixe esse terminal aberto**: se ele for fechado, o servidor para e a página deixa de abrir. O banco é criado sozinho em `dados/garagem.db`. Para parar o servidor, use `Ctrl + C`.
+
+### Se a página não abrir
+
+| Sintoma | O que fazer |
+|---|---|
+| Navegador diz "não é possível acessar esse site" | O servidor não está rodando. Rode `npm start` e deixe o terminal aberto. |
+| Terminal diz "A porta 3000 já está em uso" | O servidor já está aberto em outro terminal (use esse), ou outro programa usa a porta: rode em outra porta, ex.: `PORT=3001 npm start` (no PowerShell: `$env:PORT=3001; npm start`) e abra `http://localhost:3001`. |
+| Página abre com o aviso "Sem conexão com o servidor" | O servidor foi parado depois que a página abriu. Rode `npm start` e clique em **Tentar novamente**. |
+| `npm start` dá erro com `node:sqlite` | O Node está antigo. Instale o Node 22.13 ou mais novo. |
 
 ### Cliente 1: navegador
 
-Abra <http://localhost:3000>. Pela página dá para registrar entradas, ver a ocupação, registrar saídas (com o valor) e remover registros.
+Abra <http://localhost:3000>. Pela página dá para:
+
+- ver a ocupação da garagem (vagas, ocupadas, livres);
+- registrar entradas, com validação e mensagem de erro embaixo de cada campo;
+- ver os veículos filtrados por **No pátio**, **Histórico** ou **Todos**, com o tempo de permanência e o valor parcial (quanto custaria se saísse agora);
+- registrar saídas (mostra o valor a pagar) e remover registros (pede um segundo clique para confirmar).
+
+A lista se atualiza sozinha a cada 15 segundos. A página funciona no computador e no celular.
 
 ### Cliente 2: terminal
 
@@ -84,10 +100,11 @@ npm run cli -- listar
 npm run cli -- sair 1
 npm run cli -- resumo
 npm run cli -- remover 1
+npm run cli -- entrar QWE4R56 "Fiat Uno" Branco   # modelo com espaço vai entre aspas
 npm run cli            # mostra a ajuda
 ```
 
-O que for feito no terminal aparece na página web (botão **Atualizar**) e vice-versa, porque os dois clientes usam o mesmo servidor.
+O que for feito no terminal aparece na página web (em até 15 segundos, ou na hora com o botão **Atualizar**) e vice-versa, porque os dois clientes usam o mesmo servidor.
 
 ### Testes automatizados
 
@@ -95,7 +112,7 @@ O que for feito no terminal aparece na página web (botão **Atualizar**) e vice
 npm test
 ```
 
-São 8 testes. Os de `VeiculoService.test.js` testam as regras de negócio usando o **repositório em memória** injetado no serviço, sem banco de dados. Os de `api.test.js` sobem o servidor com SQLite e fazem requisições HTTP reais, de ponta a ponta.
+São 13 testes. Os de `VeiculoService.test.js` testam as regras de negócio usando o **repositório em memória** injetado no serviço, sem banco de dados. Os de `api.test.js` sobem o servidor com SQLite e fazem requisições HTTP reais, de ponta a ponta, incluindo os casos de erro (id inválido, JSON inválido, placa repetida, campos longos demais).
 
 ### Configurações opcionais
 
@@ -115,7 +132,7 @@ Exemplo no Linux/macOS: `DB=memoria VAGAS=3 npm start`. No PowerShell: `$env:DB=
 | Método | Rota | Descrição | Sucesso |
 |---|---|---|---|
 | GET | `/api/garagem/resumo` | Vagas totais, ocupadas e livres | 200 |
-| GET | `/api/veiculos` | Lista todos os veículos (mais recentes primeiro) | 200 |
+| GET | `/api/veiculos` | Lista todos os veículos (mais recentes primeiro), com `permanenciaMinutos` e, para quem está no pátio, `valorParcial` | 200 |
 | GET | `/api/veiculos/:id` | Busca um veículo | 200 |
 | POST | `/api/veiculos` | Registra entrada. Corpo: `{ "placa", "modelo", "cor" }` | 201 |
 | POST | `/api/veiculos/:id/saida` | Registra saída e calcula o valor | 200 |

@@ -23,7 +23,7 @@ export class VeiculoService {
     const veiculo = new Veiculo({ placa: dados.placa, modelo: dados.modelo, cor: dados.cor });
     veiculo.validar();
     if (this.repository.buscarEstacionadoPorPlaca(veiculo.placa)) {
-      throw new ErroRegraNegocio(`O veículo ${veiculo.placa} já está na garagem.`);
+      throw new ErroRegraNegocio(`O veículo ${veiculo.placa} já está na garagem.`, 'placa');
     }
     if (this.repository.contarEstacionados() >= this.vagas) {
       throw new ErroRegraNegocio('Garagem lotada: não há vagas livres.');

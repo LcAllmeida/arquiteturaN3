@@ -30,13 +30,22 @@ function tabela(veiculos) {
   if (veiculos.length === 0) return console.log('Nenhum veículo registrado.');
   console.table(
     veiculos.map((v) => ({
-      id: v.id, placa: v.placa, modelo: v.modelo, cor: v.cor,
-      status: v.status, entrada: hora(v.entrada), saida: hora(v.saida), valor: dinheiro(v.valor),
+      id: v.id, placa: v.placa, modelo: v.modelo, cor: v.cor, status: v.status,
+      entrada: hora(v.entrada), saida: v.saida ? hora(v.saida) : 'no pátio',
+      valor: v.valor !== null ? dinheiro(v.valor) : `${dinheiro(v.valorParcial)} (parcial)`,
     })),
   );
 }
 
 const [comando, ...args] = process.argv.slice(2);
+
+// Confere os argumentos antes de chamar o servidor, para dar uma mensagem clara.
+function exigirId() {
+  if (!/^[1-9][0-9]*$/.test(args[0] ?? '')) {
+    throw new Error(`informe o número do veículo. Ex.: npm run cli -- ${comando} 1 (veja os números com "listar")`);
+  }
+  return args[0];
+}
 
 try {
   switch (comando) {
@@ -49,18 +58,20 @@ try {
       tabela(await chamar('GET', '/veiculos'));
       break;
     case 'entrar': {
+      if (args.length < 3) throw new Error('informe placa, modelo e cor. Ex.: npm run cli -- entrar ABC1D23 Gol Prata');
+      // Modelo com espaço: use aspas, ex.: entrar ABC1D23 "Fiat Uno" Branco
       const [placa, modelo, cor] = args;
       const v = await chamar('POST', '/veiculos', { placa, modelo, cor });
       console.log(`Entrada registrada: #${v.id} ${v.placa} (${v.modelo}, ${v.cor})`);
       break;
     }
     case 'sair': {
-      const v = await chamar('POST', `/veiculos/${args[0]}/saida`);
+      const v = await chamar('POST', `/veiculos/${exigirId()}/saida`);
       console.log(`Saída registrada: ${v.placa} | Valor a pagar: ${dinheiro(v.valor)}`);
       break;
     }
     case 'remover':
-      await chamar('DELETE', `/veiculos/${args[0]}`);
+      await chamar('DELETE', `/veiculos/${exigirId()}`);
       console.log(`Registro #${args[0]} removido.`);
       break;
     default:

@@ -73,7 +73,7 @@ sequenceDiagram
     CT-->>CL: 8: 201 Created + veiculoView(JSON)
     CL-->>U: "Entrada registrada"
 
-    Note over SV,CT: Se uma regra falhar, o serviço lança ErroValidacao (400) ou ErroRegraNegocio (409), e o controller devolve a mensagem.
+    Note over SV,CT: Se uma regra falhar, o serviço lança ErroValidacao (400) ou ErroRegraNegocio (409) com a mensagem e o campo, e a camada de apresentação devolve { erro, campo }.
 ```
 
 ## 4. Classes: Repository e injeção de dependência
@@ -119,6 +119,8 @@ classDiagram
         +saida
         +valor
         +validar()
+        +permanenciaMinutos(agora)
+        +calcularValor(agora)
         +registrarSaida(agora)
     }
     class container {
